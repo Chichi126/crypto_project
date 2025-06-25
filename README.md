@@ -1,157 +1,226 @@
-# Azure Data Engineering Project - Real-Time Cryptocurrency Data Pipeline
 
-This project creates a real-time cryptocurrency data pipeline using Azure Data Factory (ADF) to orchestrate data ingestion, transformation, and storage in Delta Lake. The pipeline extracts data from the CoinGecko API, uses Autoloader for efficient data ingestion, leverages Unity Catalog for data governance, and integrates Azure Key Vault for secure management of secrets.
+# **Azure Data Engineering Project - Real-Time Cryptocurrency Data Pipeline**
 
-Got it! Here's a **step-by-step walkthrough** of setting up and executing your **Azure Data Engineering Project** without going into the specifics of the code.
+## **Overview**
 
----
-
-## **Azure Data Engineering Project Overview:**
-
-The goal of this project is to **build a data pipeline** that integrates real-time cryptocurrency data from the **CoinGecko API** and processes it using **Azure Databricks** with **Delta Lake**, **Autoloader**, **Unity Catalog**, and **Azure Key Vault** for secure management of credentials. The orchestration of this process is handled by **Azure Data Factory (ADF)**, which will manage the flow of data and trigger activities at the right times.
+This project demonstrates an **end-to-end real-time cryptocurrency data pipeline** leveraging **Azure Data Factory (ADF)** for orchestration, **Azure Databricks** for transformation, and **Delta Lake** for storing processed data. The pipeline extracts cryptocurrency data from the **CoinGecko API**, processes it following the **Medallion Architecture** (Silver and Gold layers), and loads the results into an **Azure SQL Database**. **Azure Key Vault** is used to store **Databricks tokens** and **SQL database connection strings** securely.
 
 ---
 
-### **1. Creating Resources in Azure**
+## **Table of Contents**
 
-Before building the pipeline, you'll need to create a few core resources in **Azure**.
-
-#### 1.1 **Create Azure Databricks Workspace**
-
-* In the **Azure portal**, create a **Databricks workspace**. This workspace will be where the transformation of data occurs, including the creation of Delta Lake tables and the use of **Autoloader** for file ingestion.
-
-#### 1.2 **Create Azure Data Factory (ADF)**
-
-* Set up **Azure Data Factory** (ADF) to orchestrate and automate the workflow. ADF will handle tasks like data extraction, triggering **Lambda** or **Web Activities**, and loading data into Databricks for processing.
-
-#### 1.3 **Create Azure Key Vault**
-
-* Create an **Azure Key Vault** to securely store secrets, such as the **CoinGecko API key**. This will ensure that your credentials are kept safe and are easily accessible by ADF and Databricks.
+1. [Prerequisites](#prerequisites)
+2. [Creating Resources in Azure](#creating-resources-in-azure)
+3. [Setting Up CoinGecko API Integration](#setting-up-the-coingecko-api-integration)
+4. [Setting Up Delta Lake and Autoloader](#setting-up-delta-lake-and-autoloader)
+5. [Medallion Architecture Implementation](#medallion-architecture-implementation)
+6. [Unity Catalog Setup](#unity-catalog-setup)
+7. [SQL Database Setup](#sql-database-setup)
+8. [Orchestrating with Azure Data Factory (ADF)](#orchestrating-with-azure-data-factory-adf)
+9. [Using Dynamic Parameters in ADF](#using-dynamic-parameters-in-adf)
+10. [Running the Pipeline](#running-the-pipeline)
+11. [Conclusion](#conclusion)
 
 ---
 
-### **2. Setting Up the CoinGecko API Integration**
+## **1. Prerequisites**
 
-To get cryptocurrency data, you'll use the **CoinGecko API**.
+Ensure you have the following before starting:
 
-#### 2.1 **Get API Key from CoinGecko**
-
-* Visit **CoinGecko** and get an API key to access the cryptocurrency data.
-
-#### 2.2 **Store API Key in Azure Key Vault**
-
-* Store the **CoinGecko API key** in **Azure Key Vault**. This will allow you to **securely reference** the key from **Azure Data Factory (ADF)** using its built-in Key Vault integration.
-
----
-
-### **3. Setting Up Delta Lake and Autoloader**
-
-**Databricks** will be the engine for data transformation. Specifically, **Delta Lake** and **Autoloader** will be used to handle the storage and processing of data.
-
-#### 3.1 **Create Delta Lake Table in Databricks**
-
-* In **Databricks**, set up a **Delta Lake** table to store the **cryptocurrency data**. Delta Lake will provide version control and ACID transactions for your data.
-
-#### 3.2 **Configure Autoloader for Efficient Data Ingestion**
-
-* **Autoloader** in Databricks will be set up to automatically ingest data from **Azure Blob Storage** into Delta Lake. Autoloader will allow for **efficient and scalable** processing of data as it arrives.
+* **Azure Subscription**: A valid Azure subscription.
+* **Azure Databricks Workspace**: Set up in your Azure subscription.
+* **Azure Data Factory (ADF)**: Set up for orchestrating the workflow.
+* **Azure Key Vault**: Set up for secure storage of sensitive credentials.
+* **Azure SQL Database**: For storing processed data.
+* **Python 3.7+**: For interacting with Databricks and other Azure services.
+* **Databricks CLI**: For managing Databricks resources.
 
 ---
 
-### **4. Setting Up Unity Catalog**
+## **2. Creating Resources in Azure**
 
-The **Unity Catalog** in Databricks will be used to manage **data governance**, ensuring that all data is accessible, well-organized, and securely managed.
+### **2.1 Create Azure Databricks Workspace**
 
-#### 4.1 **Create a Catalog in Unity Catalog**
+1. Go to the **Azure Portal** and search for **Databricks**.
+   
+2. Create a new **Databricks Workspace**, providing details like **Subscription**, **Resource Group**, and **Workspace Name**.
+   
+3. Once created, note the **Workspace URL** for accessing Databricks.
 
-* Set up a **catalog** in Unity Catalog to store the **Delta tables** and other datasets.
+### **2.2 Create Azure Data Factory (ADF)**
 
-#### 4.2 **Define Access Policies and Permissions**
+1. In the **Azure Portal**, search for **Data Factory** and create a new instance to manage orchestration.
 
-* You can define **access control** policies to ensure that the right teams or users have access to the data, improving security and compliance.
+2. Once created, open **ADF** and note the **ADF name** and **resource group**.
 
----
+### **2.3 Create Azure Key Vault**
 
-### **5. Azure Key Vault Setup**
+1. Go to **Key Vault** in the Azure Portal and create a new **Key Vault**.
 
-To manage secrets like API keys, connection strings, and other sensitive data, you’ll use **Azure Key Vault**.
-
-#### 5.1 **Store Secrets in Key Vault**
-
-* Store sensitive data (like the **CoinGecko API key** and **Databricks credentials**) in **Azure Key Vault**.
-
-#### 5.2 **Use Key Vault in ADF**
-
-* In **ADF**, configure a **linked service** to **Azure Key Vault** to securely fetch the API key and other sensitive credentials during pipeline execution.
+2. Add the **Databricks token** and **SQL database connection string** as **secrets** in the Key Vault to securely store sensitive information.
 
 ---
 
-### **6. Orchestrating with Azure Data Factory (ADF)**
+## **3. Setting Up the CoinGecko API Integration**
 
-**Azure Data Factory** will orchestrate the entire process, from data extraction to transformation and loading.
+### **3.1 Get CoinGecko API Key**
 
-#### 6.1 **Create a Pipeline in ADF**
+1. Sign up for an API key at **CoinGecko** to access cryptocurrency data.
 
-* Set up an **ADF pipeline** that will coordinate the extraction of data from the **CoinGecko API**, store it in **Blob Storage**, and then trigger Databricks to process the data.
-
-#### 6.2 **Use Web Activity to Call the CoinGecko API**
-
-* Use a **Web Activity** in ADF to call the **CoinGecko API**. This will fetch real-time data about cryptocurrencies. You’ll pass the necessary parameters (such as the **crypto symbol** or **date range**) dynamically from ADF.
-
-#### 6.3 **Trigger Databricks from ADF**
-
-* After fetching the data, use **ADF** to trigger a **Databricks notebook** that will process the cryptocurrency data, transform it, and store it in **Delta Lake**.
+2. **No need to store the CoinGecko API key** in **Azure Key Vault** as it can be directly accessed within **ADF** using the **Web Activity**.
 
 ---
 
-### **7. Using Dynamic Parameters in ADF**
+## **4. Setting Up Delta Lake and Autoloader**
 
-To make your pipeline more flexible and reusable, you’ll use **dynamic parameters** in ADF.
+### **4.1 Delta Lake Setup in Databricks**
 
-#### 7.1 **Create Dynamic Parameters in ADF**
+1. In **Databricks**, create a **cluster** to run the data transformation tasks (Standard or Jobs Cluster).
 
-* Define **dynamic parameters** in your pipeline. For example:
+2. Set up **Delta Lake tables** for the **Silver** and **Gold layers** (not the **Bronze** layer, which stores raw data as JSON). This allows for **data versioning** and
 
-#### 7.2 **Pass Parameters to Activities**
+**schema evolution**.
 
-* You’ll use **dynamic expressions** to pass these parameters to the **Web Activity** (CoinGecko API call) and Databricks (data processing tasks).
-
----
-
-### **8. Running the Pipeline**
-
-After configuring all the components, you can run the pipeline.
-
-#### 8.1 **Trigger the Pipeline**
-
-* You can manually trigger the pipeline or schedule it to run at specific intervals (e.g., daily or hourly).
-
-#### 8.2 **Monitor the Pipeline**
-
-* Use the **monitoring features** in ADF to track the progress of the pipeline and troubleshoot any issues.
 
 ---
 
-### **9. Conclusion**
+## **5. Medallion Architecture Implementation**
 
-This project demonstrates how to create a **real-time cryptocurrency data pipeline** in **Azure**. By integrating **CoinGecko API**, **Delta Lake**, **Autoloader**, **Unity Catalog**, **Azure Key Vault**, and **Azure Data Factory**, you can efficiently manage and process large-scale cryptocurrency data.
+The **Medallion Architecture** follows a multi-layer approach where data progresses through the **Bronze**, **Silver**, and **Gold** layers. In this project:
 
-With **dynamic parameters** in ADF, you can easily scale and customize the pipeline to handle different cryptocurrencies, data ranges, and transformation requirements.
+* The **Bronze Layer** stores **raw data** in **JSON format**.
+* The **Silver Layer** begins using **Delta tables** to store **cleaned and transformed data**.
+* The **Gold Layer** holds the **aggregated, ready-to-use data** for reporting and analysis.
+
+### **5.1 Bronze Layer (Raw Data - JSON)**
+
+1. The **Bronze Layer** stores **raw data** fetched from the **CoinGecko API**. This data is saved in **JSON format** in **Azure Blob Storage**.
+2. Data in this layer is untransformed, providing an **immutable record** of the raw API responses for historical reference.
+
+### **5.2 Silver Layer (Cleaned and Transformed Data)**
+
+1. The **Silver Layer** is where data is **cleaned** and **transformed**. This can include:
+
+   * Autoloader will be configured to automatically readStream the **raw cryptocurrency data** (in **JSON format**) in the raw **Azure Blob Storage**.
+
+   * Removing invalid entries.
+
+   * Aggregating data.
+
+   * Enriching data from additional sources (e.g., weather data).
+     
+ **Databricks notebooks** are used to process and store the cleaned data into **Delta Lake** as **Silver tables**.
+
+### **5.3 Gold Layer (Aggregated Data for Reporting)**
+
+1. The **Gold Layer** contains **aggregated and optimized data** for reporting and analysis.
+
+2. Data in the **Gold Layer** is ready for downstream tools such as **Power BI** or **Databricks SQL** for business insights.
+
+3. **Databricks notebooks** are used for aggregation tasks like calculating **average prices**, **market trends**, and more.
 
 ---
+
+## **6. Unity Catalog Setup**
+
+### **6.1 Set Up Unity Catalog**
+
+1. **Unity Catalog** is set up in **Databricks** to manage **data governance**, ensuring secure access to data and providing clear data lineage.
+
+2. Create a **catalog** in **Unity Catalog** and organize your data into different **schemas** such as:
+
+
+   * **raw\_data** (for **Bronze Layer** data).
+
+   * **cleaned\_data** (for **Silver Layer** data).
+
+    * **aggregated\_data** (for **Gold Layer** data).
+
+### **6.2 Implementing Data Governance**
+
+1. Use **Unity Catalog** to manage **access controls** for different teams or individuals working with the data in various stages (Bronze, Silver, and Gold).
+
+2. Set up **data access permissions** to ensure sensitive data is only accessible by authorized users.
+
+---
+
+## **7. SQL Database Setup**
+
+### **7.1 Create Azure SQL Database**
+
+1. In **Azure**, create an **SQL Database** to store **aggregated data** from the **Gold Layer**.
+
+2. Set up the necessary **tables** in the **SQL Database** to hold information such as:
+
+   * ** Fact and Dimension tables 
+
+### **7.2 Data Loading from Delta Lake to SQL**
+
+1. Use **Azure Data Factory** to **move** the transformed and aggregated data from **Delta Lake** (Silver and Gold layers) to **Azure SQL Database** for reporting.
+
+---
+
+## **8. Orchestrating with Azure Data Factory (ADF)**
+
+### **8.1 Create a Pipeline in ADF**
+
+1. In **Azure Data Factory**, create a **new pipeline** to automate the entire process:
+
+   * **Move Data From Databricks to Blob Storage**.
+
+   * **Trigger Databricks**: Use ADF to trigger **Databricks notebooks** that will clean, transform, and aggregate the data.
+
+### **8.3 Trigger Databricks from ADF**
+
+1. After the data is stored in **Azure Blob Storage**, trigger **Databricks notebooks** that:
+
+   * Process the raw data (from **Bronze Layer**).
+
+   * Clean and transform it (to the **Silver Layer**).
+
+    * Aggregate the data for reporting (to the **Gold Layer**).
+
+---
+
+## **9. Using Dynamic Parameters in ADF**
+
+### **9.1 Create Dynamic Parameters**
+
+1. Define dynamic parameters in ADF for:
+
+   Source Dynamics
+
+   Sink Dynamic Parameters
+
+  Pass Parameters to Activities**
+
+
+
+
+---
+
+## **10. Running the Pipeline**
+
+### **10.1 Trigger the Pipeline**
+
+1. Once everything is set up, manually trigger the pipeline or schedule it to run at specified intervals (e.g., hourly, daily).
+
+2. Monitor the progress of each activity to ensure the pipeline runs smoothly.
+
+### **10.2 Monitor the Pipeline**
+
+1. Use **Azure Data Factory's monitoring features** to track the pipeline's progress, log details, and troubleshoot any errors.
+
+---
+
+## **11. Conclusion**
+
+This project demonstrates how to integrate **real-time cryptocurrency data** from **CoinGecko** into a data pipeline built using **Azure Data Factory**, **Databricks**, and **Delta Lake**. The pipeline follows the **Medallion Architecture** to clean, transform, and aggregate data into **Silver** and **Gold layers**, and stores the results in **Azure SQL Database** for further analysis. **Unity Catalog** ensures proper data governance and access control, while **Azure Key Vault** securely manages credentials.
 
 ### **Next Steps**:
 
-* Extend the pipeline to handle additional data sources or more complex transformations.
-* Implement additional **data validation** and **error handling** mechanisms in ADF.
-* Use the data processed in **Delta Lake** to **train machine learning models** for **predictive analytics** (e.g., predicting future cryptocurrency prices).
+* **Extend the pipeline** to include more data sources or additional transformations.
+* **Visualize** the data using **Power BI** or **Databricks SQL**.
+* Set up **monitoring** and **alerts** in **Azure Data Factory** for better observability.
 
 ---
-
-Let me know if you need any further clarifications or if you'd like to dive deeper into any of the steps!
-
-
-
-
-
-
